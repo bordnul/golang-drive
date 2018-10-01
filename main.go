@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"golang_drive/authorize"
-	"golang_drive/controller"
 	"io/ioutil"
 	"os"
+
+	"github.com/bordnul/golang-drive/authorize"
+	"github.com/bordnul/golang-drive/controller"
 
 	"runtime"
 	"strings"
@@ -64,7 +65,7 @@ func main() {
 	////////////////////////////
 
 	//mode
-	modeF := flag.String("m", "", "use to define mode")
+	modeF := flag.String("m", "", "modes: localupload, drivedownload (needs -d for target)")
 	//local target path\file
 	localF := flag.String("l", "C:\\Users\\game_game\\go\\test\\", "local file target")
 	//root google folder

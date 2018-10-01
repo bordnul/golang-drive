@@ -2,11 +2,12 @@ package controller
 
 import (
 	"fmt"
-	"golang_drive/crawl"
-	"golang_drive/create"
-	"golang_drive/delete"
 	"os"
 	"time"
+
+	"github.com/bordnul/golang-drive/crawl"
+	"github.com/bordnul/golang-drive/create"
+	"github.com/bordnul/golang-drive/delete"
 
 	"errors"
 	"strings"
