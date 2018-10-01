@@ -1,34 +1,20 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 
-	"Mine/GoDrive/authorize"
-	"Mine/GoDrive/driveapi"
-	"Mine/GoDrive/localfiles"
+	"github.com/bordnul/golang-drive/authorize"
+	"github.com/bordnul/golang-drive/controller"
 
 	"runtime"
+	"strings"
 
 	"golang.org/x/oauth2/google"
-	"google.golang.org/api/drive/v3"
+	drive "google.golang.org/api/drive/v3"
 )
-
-//var fileList []string
-
-func errFunc(err error) {
-	if err != nil {
-		fmt.Printf("Error!!: %v\nExiting program.", err.Error())
-		os.Exit(404)
-	}
-}
-
-func errFile(err error, name string) {
-
-	fmt.Println(err, "encountered while uploading: ", name, "\nFile", name, " skipped.")
-
-}
 
 func manualInit(clientPath string, tokenPath string) (*drive.Service, error) {
 
@@ -41,147 +27,75 @@ func manualInit(clientPath string, tokenPath string) (*drive.Service, error) {
 
 	//Initiates Google Drive service
 	c, err := ioutil.ReadFile(clientPath)
-	errFunc(err)
+	if err != nil {
+		return nil, err
+	}
 
 	creds, err := google.ConfigFromJSON(c, drive.DriveScope)
-	errFunc(err)
+	if err != nil {
+		return nil, err
+	}
 
 	driveClient, err := authorize.GetClient(creds, tokenPath, clientPath)
-	errFunc(err)
+	if err != nil {
+		return nil, err
+	}
 
 	driveService, err := drive.New(driveClient)
-	errFunc(err)
+	if err != nil {
+		return nil, err
+	}
 
-	fmt.Printf("Service started successfully.\n")
-	////////////////////////////////
+	fmt.Println("service started successfully")
 	return driveService, nil
 
 }
 
-func commandFind() {
-
-	testCommand := make(map[string]string)
-	testCommand["upload"] = "/tmp/fake/upload"
-	testCommand["download"] = "/tmp/fake/download"
-
-	return
-
-}
-
 func main() {
-	var folderArg string = "shared_golang"
-	var modeArg string = "fulldownload"
-	var localArg string = "C:\\Users\\game_game\\go\\test\\level two\\level three"
-	//var folderMap = make(map[string]string)
-	var pathFiller string
-	////////////////////////////
+	slashType := ""
 	if runtime.GOOS == "windows" {
-		pathFiller = "\\"
+		slashType = "\\"
 	} else {
-		pathFiller = "/"
+		slashType = "/"
 	}
-	//callArgs 0 = pathFiller, 1 = folderArg, 2 = localArg, 3 = modeArg
-	callArgs := []string{pathFiller, folderArg, localArg, modeArg}
-
 	////////////////////////////
 	//call to get token and client info
 	var tokenPath string = "token.json"
 	var clientPath string = "client.json"
 	////////////////////////////
 
+	//mode
+	modeF := flag.String("m", "", "modes: localupload, drivedownload (needs -d for target)")
+	//local target path\file
+	localF := flag.String("l", "C:\\Users\\game_game\\go\\test\\", "local file target")
+	//root google folder
+	googleF := flag.String("g", "shared_golang", "Google root folder")
+	//target in google folder
+	googleD := flag.String("d", "", "download target in Google root folder")
+	flag.Parse()
+
+	callArgs := []string{slashType, *modeF, *localF, *googleF, *googleD}
+
 	driveService, err := manualInit(clientPath, tokenPath)
 	if err != nil {
-		errFunc(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	switch modeArg {
-	case "fullupload":
-
-		fileList, err := localfiles.ListTarget(callArgs[2])
-		if err != nil {
-			errFunc(err)
-		}
-		fmt.Println("file list gathered successfully")
-
-		//err = driveapi.StartData(fileList, driveService, &callArgs)
-		err = driveapi.StartData(fileList, folderArg, modeArg, pathFiller, driveService, localArg)
-		if err != nil {
-			errFunc(err)
-		}
-
-	case "update":
-
-		fileList, err := localfiles.ListTarget(localArg)
-		if err != nil {
-			errFunc(err)
-		}
-
-		err = driveapi.StartData(fileList, folderArg, modeArg, pathFiller, driveService, localArg)
-		if err != nil {
-			errFunc(err)
-		}
-
-	case "delete":
-
-	case "fulldownload":
-		err := driveapi.StartData([]string{}, folderArg, modeArg, pathFiller, driveService, localArg)
-		if err != nil {
-			errFunc(err)
-		}
-
-	case "downloadUpdate":
-
-	default:
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		bleh, err := driveService.Files.List().PageSize(1000).Fields("files(name,id)").Do()
-
-		k := ""
-
-		if err != nil {
-			errFunc(err)
-		}
-		for _, i := range bleh.Files {
-			if i.Name == "Print this" {
-				k = i.Id
-				break
-			}
-		}
-		fmt.Println(k)
-
-		//fmt.Println(k)
-		/*
-				ey := driveService.Files.Get(k)
-				file, err := ey.Download()
-				if err != nil {
-					errFunc(err)
-				}
-				fmt.Println(file)
-
-				fmt.Println("Attempting download now")
-
-			err = os.MkdirAll("C:\\Users\\game_game\\go\\src\\Mine\\Testing\\coocoo\\", 'd')
-			if err != nil {
-				errFunc(err)
-			}
-		*/
-
-		/*
-			_, err = io.Copy(make, file.Body)
-			if err != nil {
-				errFunc(err)
-			}
-			make.Close()
-			//file.Close()
-		*/
+	//trims trailing slash from local target
+	if strings.HasSuffix(callArgs[2], callArgs[0]) {
+		callArgs[2] = callArgs[2][:len(callArgs[2])-1]
 	}
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	commandFind()
+	switch {
+	case *modeF == "localupload" || *modeF == "drivedownload" && *googleD != "":
+
+		err := controller.StartAPI(driveService, &callArgs)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+	}
 
 }
